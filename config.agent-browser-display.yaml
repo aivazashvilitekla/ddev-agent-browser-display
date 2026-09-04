@@ -1,0 +1,47 @@
+#ddev-generated
+# agent-browser-display: a persistent virtual X display in the web container,
+# shared over VNC and viewable in a browser tab through noVNC. Lets
+# agent-browser (vercel-labs) run `--headed` so you can watch what the coding
+# agent does in the browser. Headless stays the default; the display only
+# makes headed runs possible.
+
+# Debian packages baked into the web image (ddev-webserver is Debian trixie):
+# xvfb = the virtual X server, x11vnc = shares an X display over VNC,
+# novnc + websockify = the browser-based VNC viewer and its WebSocket bridge.
+webimage_extra_packages:
+  - xvfb
+  - x11vnc
+  - novnc
+  - websockify
+
+# Every process in the web container sees this display. agent-browser only
+# starts its own private Xvfb when DISPLAY is unset (cli/src/native/cdp/
+# chrome.rs, maybe_start_xvfb), so with DISPLAY set its headed Chrome lands
+# on OUR display, where x11vnc can see it.
+web_environment:
+  - DISPLAY=:99
+
+# Three foreground daemons, supervised by DDEV (supervisord, autorestart).
+# Order of startup is not guaranteed; x11vnc simply exits until :99 exists and
+# supervisord retries it (15 retries, 2 s apart), so no explicit ordering is
+# needed.
+web_extra_daemons:
+  - name: xvfb
+    command: "Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp"
+    directory: /tmp
+  - name: x11vnc
+    command: "x11vnc -display :99 -forever -shared -nopw -rfbport 5900 -noxdamage -quiet"
+    directory: /tmp
+  - name: novnc
+    command: "websockify --web /usr/share/novnc 0.0.0.0:6080 localhost:5900"
+    directory: /tmp
+
+# Publish the noVNC page through ddev-router: https://<project>.ddev.site:6080
+# (http on 6081). All three ports must be set or the router fails to start.
+# The raw VNC port 5900 is NOT published - see README.md for the two-line
+# docker-compose snippet if you want macOS Screen Sharing instead.
+web_extra_exposed_ports:
+  - name: novnc
+    container_port: 6080
+    http_port: 6081
+    https_port: 6080

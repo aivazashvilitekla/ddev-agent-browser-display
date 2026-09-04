@@ -1,0 +1,13 @@
+name: agent-browser-display
+
+# Files copied into the project's .ddev/ by `ddev add-on get`. Each carries
+# `#ddev-generated` on its first line so `ddev add-on remove` and re-installs
+# manage them; delete that line in a project to take ownership of a file.
+project_files:
+  - config.agent-browser-display.yaml
+
+# web_extra_daemons + web_extra_exposed_ports need a modern DDEV.
+ddev_version_constraint: '>= v1.24.0'
+
+post_install_actions:
+  - echo "agent-browser-display added. Run 'ddev restart' to build the display into the web container, then open https://<project>.ddev.site:6080/vnc.html"
