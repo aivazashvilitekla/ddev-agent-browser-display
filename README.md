@@ -56,24 +56,37 @@ Three things to know inside a DDEV web container:
 ## Native VNC viewer instead of noVNC
 
 The raw VNC port is not published by default (a fixed host port collides
-across projects). To use macOS Screen Sharing, add `.ddev/docker-compose.vnc.yaml`:
+across projects, and x11vnc runs with no password). To use macOS Screen
+Sharing, add `.ddev/docker-compose.vnc.yaml`:
 
 ```yaml
 services:
   web:
     ports:
-      - "5900:5900"
+      - "127.0.0.1:5900:5900"
 ```
 
-then `ddev restart` and open `vnc://127.0.0.1:5900`.
+then `ddev restart` and open `vnc://127.0.0.1:5900`. The `127.0.0.1:` prefix
+keeps the port off your other network interfaces; without it Docker binds
+0.0.0.0 and anyone on your network could drive the display.
 
 ## Security note
 
-The X display has no authentication and the VNC server no password. Both are
-reachable only inside the container (X over a local socket, VNC on a port
-that is not published). Anything running inside the web container can view
-and drive the display - fine for a single-user dev container, which is what
-DDEV is.
+The X display has no authentication and x11vnc runs with `-nopw`. Inside the
+container that is fine: anything running in the web container can already
+do anything to your site. Two things are reachable from outside it:
+
+- **The noVNC page on router port 6080** has no password. Whoever can open
+  it can watch AND drive the display, including the agent's logged-in
+  browser. ddev-router binds to 127.0.0.1 unless you set
+  `router_bind_all_interfaces: true`, so by default that is only you.
+- **Port 5900** is not published unless you add the snippet above; if you do,
+  keep the `127.0.0.1:` prefix.
+
+Also note `DISPLAY=:99` is set for every process in the web container. If the
+Xvfb daemon is not running (check `ddev exec supervisorctl status
+'webextradaemons:*'`), any X client, agent-browser included, fails with
+"cannot open display :99" rather than starting a private display.
 
 ## Remove
 
