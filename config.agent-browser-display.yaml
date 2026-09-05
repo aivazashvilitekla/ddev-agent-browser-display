@@ -25,12 +25,18 @@ web_environment:
 # Order of startup is not guaranteed; x11vnc simply exits until :99 exists and
 # supervisord retries it (15 retries, 2 s apart), so no explicit ordering is
 # needed.
+#
+# -localhost binds x11vnc to the container's loopback. Without it x11vnc
+# listens on every container interface with -nopw, and because every DDEV
+# project's web container shares the ddev_default network, another project's
+# container can open a full, unauthenticated VNC session on this one.
+# websockify connects over localhost:5900, so noVNC is unaffected.
 web_extra_daemons:
   - name: xvfb
     command: "Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp"
     directory: /tmp
   - name: x11vnc
-    command: "x11vnc -display :99 -forever -shared -nopw -rfbport 5900 -noxdamage -quiet"
+    command: "x11vnc -display :99 -forever -shared -nopw -localhost -rfbport 5900 -noxdamage -quiet"
     directory: /tmp
   - name: novnc
     command: "websockify --web /usr/share/novnc 0.0.0.0:6080 localhost:5900"
